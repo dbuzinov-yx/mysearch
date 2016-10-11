@@ -34,56 +34,78 @@ function mysearch_menu() {
  *   http://domain.com/mysearch/example
  * will return a list of links to nodes which have the word
  * example in them.
+ * @param string $search
+ *   The keyword to search in body of node.
  */
 function mysearch_searchpage($search) {
-  //get language to limit query by current language
+  // get language to limit query by current language
   global $language;
   
-  //create or query 
-  $language_or_fdb = db_or()->condition('fdb.language', $language->language)->condition('fdb.language', LANGUAGE_NONE);
+  // create or query for language
+  $language_or_fdb = db_or()
+    ->condition('fdb.language', $language->language)
+    ->condition('fdb.language', LANGUAGE_NONE);
   
-  //select nodes
+  // select nodes
   $query = db_select('node', 'n');
   
-  //search only on active revision
+  // search only on active revision
   $query->join('node_revision', 'nr', 'n.nid = nr.nid');
-  //search in body
+  // search in body
   $query->join('field_data_body', 'fdb', '(nr.vid = fdb.revision_id and n.nid = fdb.entity_id)');
   
-  //join url_alias if need more content control 
-  // for shure will use l() but in case) 
-  //$query->leftJoin('url_alias','ua','(ua.source = CONCAT(\'node/\',n.nid) and fdb.language = ua.language)');
-  //->fields('ua',array('alias'))
+  // can join url_alias if need more content control 
+  // for shure will use l() but in case %) 
+  // $query->leftJoin('url_alias','ua','(ua.source = CONCAT(\'node/\',n.nid) and fdb.language = ua.language)');
+  // ->fields('ua',array('alias'))
   
   $search_results = $query
-    ->fields('fdb',array('body_value'))
-    ->fields('n',array('nid'))
-    ->fields('nr',array('title'))
-    //not so cool full text search mysql match against but ... in this case ... 
+    ->extend('PagerDefault') //as usual pagination
+    ->addTag('node_access') //make sure that tagging allowed
+    ->fields('fdb', array('body_value'))
+    ->fields('n', array('nid'))
+    ->fields('nr', array('title'))
+    // not so cool full text search as mysql match against but ... in this case ... 
     ->condition('body_value', '%' . db_like($search) . '%', 'LIKE')
-    //language 
+    // language 
     ->condition($language_or_fdb)
-    //status
-    ->condition('n.status',1)
+    // status
+    ->condition('n.status', 1) //chack status for sure if needed
+    ->limit(variable_get('default_nodes_main', 10))
     ->execute()
     ->fetchAll(PDO::FETCH_ASSOC);
-
   
-  dpm($search_results);
-  $page = array (
-    '#theme' => 'mysearch_list',
-    '#search' => check_plain($search),
-    '#nodes' => $search_results
+  // in future for some native layout can be updated to  
+  // fetchCol() with nids
+  // node_load_multiple($nids)
+  // node_view_multiple($nodes) etc
+  
+  
+  $page = array(
+    'mysearch_list' => array(
+      '#theme' => 'mysearch_list',
+      '#search' => check_plain($search),
+      '#lable' => t('Search for'),
+      '#empty' => t('No result'),
+      '#nodes' => $search_results
+    ),
+    'pager_pager' => array('#theme' => 'pager'),
   );
+  
   return $page;
 }
 
+/**
+ * Implementation of hook_theme().
+ */
 function mysearch_theme() {
-  return array (
-    'mysearch_list' => array (
-      'variables' => array (
-        'search' => FALSE,
-        'nodes' => FALSE,
+  return array(
+    'mysearch_list' => array(
+      'variables' => array(
+        'search' => NULL,
+        'nodes' => NULL,
+        'lable' => NULL,
+        'empty' => NULL,
       ),
       'template' => 'templates/mysearch-list',
     ),
