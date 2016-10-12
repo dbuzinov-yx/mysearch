@@ -6,8 +6,8 @@
 function mysearch_permission() {
   return array(
     'access mysearch' => array(
-        'title' => 'Access My Search',
-        'description' => 'Allows a user to access search results',
+        'title' => t('Access My Search'),
+        'description' => t('Allows a user to access search results'),
       )
     );
 }
