@@ -5,6 +5,7 @@ Changed from php mockup
  
  - Added .info
  - rename .module.php to .module
+ - wrap strings by t()
  - Update hook_menu to match urls mysearch/%
  - Update Comments to be able generate Docs
  - Remove arg()
